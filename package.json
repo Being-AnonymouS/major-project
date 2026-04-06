@@ -1,0 +1,57 @@
+{
+  "name": "mentor-connect",
+  "version": "1.0.0",
+  "description": "A comprehensive mentorship platform connecting mentors and mentees with real-time communication, appointment management, and rating system",
+  "private": true,
+  "keywords": [
+    "mentorship",
+    "education",
+    "react",
+    "nodejs",
+    "socket.io",
+    "real-time"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/mentor-connect.git"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build:analyze": "cd frontend && npm run build:analyze",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "clean": "npm run clean:frontend && npm run clean:backend && rm -rf node_modules",
+    "clean:frontend": "cd frontend && npm run clean",
+    "clean:backend": "cd backend && rm -rf dist node_modules/.cache",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && npm test",
+    "test:complete": "node test-complete-flow.js",
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:backend": "cd backend && npm run lint",
+    "format": "npm run format:frontend && npm run format:backend",
+    "format:frontend": "cd frontend && npm run format",
+    "format:backend": "cd backend && npm run format",
+    "demo": "node demo-script.js",
+    "demo:setup": "npm run install:all && cd backend && npx prisma generate && npx prisma db push && npm run db:seed",
+    "demo:reset": "cd backend && npm run db:reset"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.7"
+  }
+}

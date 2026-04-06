@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "framework": "vite",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build:frontend",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://mentor-connect-backend-piyushcoder07-20260406.onrender.com/api/$1"
+    },
+    {
+      "source": "/api",
+      "destination": "https://mentor-connect-backend-piyushcoder07-20260406.onrender.com/api"
+    },
+    {
+      "source": "/socket.io/(.*)",
+      "destination": "https://mentor-connect-backend-piyushcoder07-20260406.onrender.com/socket.io/$1"
+    },
+    {
+      "source": "/socket.io",
+      "destination": "https://mentor-connect-backend-piyushcoder07-20260406.onrender.com/socket.io"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}

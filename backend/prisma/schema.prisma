@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  name          String
+  role          String   // MENTOR, MENTEE, or ADMIN
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Mentor-specific fields
+  expertise     String?
+  bio           String?
+  yearsExperience Int?
+  availabilitySlots String? // JSON string for time slots
+  ratingAverage Float?
+  
+  // Mentee-specific fields
+  institute     String?
+  course        String?
+  goals         String?
+  
+  // Relations
+  mentorAppointments    Appointment[] @relation("MentorAppointments")
+  menteeAppointments    Appointment[] @relation("MenteeAppointments")
+  sentMessages         Message[] @relation("SentMessages")
+  receivedMessages     Message[] @relation("ReceivedMessages")
+  ratingsGiven         Rating[] @relation("RatingsGiven")
+  ratingsReceived      Rating[] @relation("RatingsReceived")
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  mentorId    String
+  menteeId    String
+  datetime    DateTime
+  status      String   // REQUESTED, ACCEPTED, COMPLETED, or CANCELLED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  mentor      User @relation("MentorAppointments", fields: [mentorId], references: [id])
+  mentee      User @relation("MenteeAppointments", fields: [menteeId], references: [id])
+  messages    Message[]
+  rating      Rating?
+}
+
+model Message {
+  id            String   @id @default(cuid())
+  appointmentId String
+  fromId        String
+  toId          String
+  text          String
+  timestamp     DateTime @default(now())
+  
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  from          User @relation("SentMessages", fields: [fromId], references: [id])
+  to            User @relation("ReceivedMessages", fields: [toId], references: [id])
+}
+
+model Rating {
+  id            String   @id @default(cuid())
+  appointmentId String   @unique
+  raterId       String
+  ratedId       String
+  score         Int
+  comments      String?
+  createdAt     DateTime @default(now())
+  
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  rater         User @relation("RatingsGiven", fields: [raterId], references: [id])
+  rated         User @relation("RatingsReceived", fields: [ratedId], references: [id])
+}
+
+// Note: SQLite doesn't support enums, so we use strings with validation in the application layer
+// Role values: MENTOR, MENTEE, ADMIN
+// AppointmentStatus values: REQUESTED, ACCEPTED, COMPLETED, CANCELLED
