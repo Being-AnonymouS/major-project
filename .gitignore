@@ -125,3 +125,6 @@ TEMP_*.md
 # Personal notes and documentation
 PERSONAL_NOTES.md
 DEV_NOTES.md
+.vercel
+.env*.local
+.env.project.*
