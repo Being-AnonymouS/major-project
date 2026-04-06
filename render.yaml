@@ -1,7 +1,7 @@
 services:
   - type: web
     name: mentor-connect-backend-piyushcoder07-20260406
-    env: node
+    runtime: node
     region: singapore
     plan: free
     rootDir: backend
