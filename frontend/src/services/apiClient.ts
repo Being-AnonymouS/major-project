@@ -1,8 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ApiResponse, ApiException } from '../types/api';
 
-const DEFAULT_RENDER_BACKEND_URL = 'https://mentor-connect-backend-piyushcoder07-20260406.onrender.com';
-
 interface RetryConfig {
   retries: number;
   retryDelay: number;
@@ -32,7 +30,7 @@ class ApiClient {
     const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
     const resolvedBaseUrl = configuredApiUrl && configuredApiUrl.length > 0
       ? configuredApiUrl
-      : (import.meta.env.PROD ? `${DEFAULT_RENDER_BACKEND_URL}/api` : '/api');
+      : '/api';
 
     this.client = axios.create({
       baseURL: resolvedBaseUrl,

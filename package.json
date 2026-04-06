@@ -24,6 +24,7 @@
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npm run build",
+    "vercel:build": "npm run db:generate --workspace=mentor-connect-backend && npm run db:migrate --workspace=mentor-connect-backend && npm run build:frontend",
     "build:analyze": "cd frontend && npm run build:analyze",
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
     "clean": "npm run clean:frontend && npm run clean:backend && rm -rf node_modules",
@@ -41,7 +42,8 @@
     "format:backend": "cd backend && npm run format",
     "demo": "node demo-script.js",
     "demo:setup": "npm run install:all && cd backend && npx prisma generate && npx prisma db push && npm run db:seed",
-    "demo:reset": "cd backend && npm run db:reset"
+    "demo:reset": "cd backend && npm run db:reset",
+    "deploy:vercel": "npx vercel --prod --yes"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

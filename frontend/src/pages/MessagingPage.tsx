@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ConversationList } from '../components/ConversationList';
 import { MessageThread } from '../components/MessageThread';
@@ -16,7 +16,7 @@ export const MessagingPage: React.FC = () => {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   
-  const { onNewMessage, offNewMessage, joinAppointmentRoom, leaveAppointmentRoom } = useSocket();
+  const { onNewMessage, offNewMessage, joinAppointmentRoom, leaveAppointmentRoom, isConnected } = useSocket();
   const { error: showError } = useToast();
   const { user } = useAuth();
   const { conversations, markAsRead, isLoading: isLoadingConversations, loadConversations } = useMessaging();
@@ -66,6 +66,21 @@ export const MessagingPage: React.FC = () => {
     };
   }, [selectedConversationId, onNewMessage, offNewMessage, user?.id]);
 
+  const loadMessages = useCallback(async (appointmentId: string) => {
+    try {
+      setIsLoadingMessages(true);
+      const data = await messageService.getMessages(appointmentId);
+      // Ensure data is always an array
+      setMessages(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      showError(error.message || 'Failed to load messages');
+      // Set empty array on error
+      setMessages([]);
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }, [showError]);
+
   // Join/leave appointment rooms when selection changes
   useEffect(() => {
     if (selectedConversationId) {
@@ -79,22 +94,22 @@ export const MessagingPage: React.FC = () => {
         leaveAppointmentRoom(selectedConversationId);
       }
     };
-  }, [selectedConversationId, joinAppointmentRoom, leaveAppointmentRoom, markAsRead]);
+  }, [selectedConversationId, joinAppointmentRoom, leaveAppointmentRoom, loadMessages, markAsRead]);
 
-  const loadMessages = async (appointmentId: string) => {
-    try {
-      setIsLoadingMessages(true);
-      const data = await messageService.getMessages(appointmentId);
-      // Ensure data is always an array
-      setMessages(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-      showError(error.message || 'Failed to load messages');
-      // Set empty array on error
-      setMessages([]);
-    } finally {
-      setIsLoadingMessages(false);
+  // Serverless fallback: refresh thread periodically when realtime socket is unavailable.
+  useEffect(() => {
+    if (!selectedConversationId || isConnected) {
+      return;
     }
-  };
+
+    const intervalId = window.setInterval(() => {
+      loadMessages(selectedConversationId);
+    }, 8000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isConnected, loadMessages, selectedConversationId]);
 
   const handleSelectConversation = (appointmentId: string) => {
     setSelectedConversationId(appointmentId);

@@ -4,9 +4,21 @@ import { useAuth } from '../hooks/useAuth';
 import { Message } from '../types/message';
 import { isJwtExpired } from '../utils/jwt';
 
-const DEFAULT_RENDER_BACKEND_URL = 'https://mentor-connect-backend-piyushcoder07-20260406.onrender.com';
+const isRealtimeDisabledByConfig = (): boolean => {
+  const configuredRealtimeFlag = import.meta.env.VITE_ENABLE_REALTIME?.trim().toLowerCase();
+  if (configuredRealtimeFlag) {
+    return ['0', 'false', 'off', 'no'].includes(configuredRealtimeFlag);
+  }
 
-const resolveSocketUrl = (): string => {
+  // Default to HTTP-only mode on Vercel-hosted frontends unless explicitly configured.
+  return /\.vercel\.app$/i.test(window.location.hostname);
+};
+
+const resolveSocketUrl = (): string | null => {
+  if (isRealtimeDisabledByConfig()) {
+    return null;
+  }
+
   const configuredSocketUrl = import.meta.env.VITE_SOCKET_URL?.trim();
   if (configuredSocketUrl) {
     return configuredSocketUrl.replace(/\/+$/, '');
@@ -22,7 +34,7 @@ const resolveSocketUrl = (): string => {
     return window.location.origin;
   }
 
-  return DEFAULT_RENDER_BACKEND_URL;
+  return window.location.origin;
 };
 
 interface SocketContextType {
@@ -63,7 +75,13 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       return;
     }
 
-    const socketInstance = io(resolveSocketUrl(), {
+    const socketUrl = resolveSocketUrl();
+    if (!socketUrl) {
+      setIsConnected(false);
+      return;
+    }
+
+    const socketInstance = io(socketUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],
       withCredentials: true,

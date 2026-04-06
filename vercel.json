@@ -2,28 +2,20 @@
   "version": 2,
   "framework": "vite",
   "installCommand": "npm install",
-  "buildCommand": "npm run build:frontend",
+  "buildCommand": "npm run vercel:build",
   "outputDirectory": "frontend/dist",
-  "rewrites": [
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 60
+    }
+  },
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://mentor-connect-backend-piyushcoder07-20260406.onrender.com/api/$1"
+      "handle": "filesystem"
     },
     {
-      "source": "/api",
-      "destination": "https://mentor-connect-backend-piyushcoder07-20260406.onrender.com/api"
-    },
-    {
-      "source": "/socket.io/(.*)",
-      "destination": "https://mentor-connect-backend-piyushcoder07-20260406.onrender.com/socket.io/$1"
-    },
-    {
-      "source": "/socket.io",
-      "destination": "https://mentor-connect-backend-piyushcoder07-20260406.onrender.com/socket.io"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "headers": [

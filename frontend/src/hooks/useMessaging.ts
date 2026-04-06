@@ -11,7 +11,7 @@ export const useMessaging = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { onNewMessage, offNewMessage } = useSocket();
+  const { onNewMessage, offNewMessage, isConnected } = useSocket();
   const { error: showError } = useToast();
   const { user } = useAuth();
 
@@ -73,6 +73,21 @@ export const useMessaging = () => {
       offNewMessage(handleNewMessage);
     };
   }, [offNewMessage, onNewMessage, user?.id]);
+
+  // Serverless fallback: keep conversations fresh when WebSocket is unavailable.
+  useEffect(() => {
+    if (!user || isConnected) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadConversations();
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isConnected, loadConversations, user]);
 
   // Mark conversation as read and update read status
   const markAsRead = useCallback(async (appointmentId: string) => {
