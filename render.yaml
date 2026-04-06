@@ -24,6 +24,12 @@ services:
         value: 7d
       - key: BCRYPT_ROUNDS
         value: 12
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        value: admin@mentorconnect.com
+      - key: BOOTSTRAP_ADMIN_NAME
+        value: Administrator
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        value: admin123
     healthCheckPath: /api/health
 
 databases:
