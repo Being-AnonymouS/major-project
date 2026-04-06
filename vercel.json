@@ -11,6 +11,14 @@
   },
   "routes": [
     {
+      "src": "/api$",
+      "dest": "/api/index"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/[...route]"
+    },
+    {
       "handle": "filesystem"
     },
     {
