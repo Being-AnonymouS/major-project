@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ConversationList } from '../components/ConversationList';
 import { MessageThread } from '../components/MessageThread';
@@ -9,17 +9,27 @@ import { useAuth } from '../hooks/useAuth';
 import { useMessaging } from '../hooks/useMessaging';
 import { Message } from '../types/message';
 
+interface LoadMessagesOptions {
+  background?: boolean;
+}
+
 export const MessagingPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [selectedConversationId, setSelectedConversationId] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const messagesCacheRef = useRef<Record<string, Message[]>>({});
+  const selectedConversationRef = useRef<string>('');
   
   const { onNewMessage, offNewMessage, joinAppointmentRoom, leaveAppointmentRoom, isConnected } = useSocket();
   const { error: showError } = useToast();
   const { user } = useAuth();
   const { conversations, markAsRead, isLoading: isLoadingConversations, loadConversations } = useMessaging();
+
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversationId;
+  }, [selectedConversationId]);
 
   // Load conversations when the page opens
   useEffect(() => {
@@ -45,12 +55,15 @@ export const MessagingPage: React.FC = () => {
       // The sender already sees their message from the HTTP response
       if (message.fromId !== user?.id) {
         // Update messages if it's for the currently selected conversation
-        if (message.appointmentId === selectedConversationId) {
+        if (message.appointmentId === selectedConversationRef.current) {
           setMessages(prev => {
             // Check if message already exists to prevent duplicates
             const messageExists = prev.some(msg => msg.id === message.id);
             if (messageExists) return prev;
-            return [...prev, message];
+
+            const updatedMessages = [...prev, message];
+            messagesCacheRef.current[message.appointmentId] = updatedMessages;
+            return updatedMessages;
           });
         }
       }
@@ -64,20 +77,43 @@ export const MessagingPage: React.FC = () => {
     return () => {
       offNewMessage(handleNewMessage);
     };
-  }, [selectedConversationId, onNewMessage, offNewMessage, user?.id]);
+  }, [onNewMessage, offNewMessage, user?.id]);
 
-  const loadMessages = useCallback(async (appointmentId: string) => {
+  const loadMessages = useCallback(async (appointmentId: string, options?: LoadMessagesOptions) => {
+    const background = options?.background ?? false;
+    const cachedMessages = messagesCacheRef.current[appointmentId];
+
     try {
-      setIsLoadingMessages(true);
+      if (!background) {
+        if (cachedMessages) {
+          setMessages(cachedMessages);
+        } else {
+          setIsLoadingMessages(true);
+        }
+      }
+
       const data = await messageService.getMessages(appointmentId);
-      // Ensure data is always an array
-      setMessages(Array.isArray(data) ? data : []);
+      const normalizedMessages = Array.isArray(data) ? data : [];
+      messagesCacheRef.current[appointmentId] = normalizedMessages;
+
+      if (selectedConversationRef.current === appointmentId) {
+        setMessages(normalizedMessages);
+      }
     } catch (error: any) {
-      showError(error.message || 'Failed to load messages');
-      // Set empty array on error
-      setMessages([]);
+      if (!background) {
+        showError(error.message || 'Failed to load messages');
+
+        // Only clear thread when there is no cached snapshot to show.
+        if (!cachedMessages) {
+          setMessages([]);
+        }
+      } else if (import.meta.env.DEV) {
+        console.warn('Background message refresh failed:', error);
+      }
     } finally {
-      setIsLoadingMessages(false);
+      if (!background && selectedConversationRef.current === appointmentId) {
+        setIsLoadingMessages(false);
+      }
     }
   }, [showError]);
 
@@ -85,7 +121,12 @@ export const MessagingPage: React.FC = () => {
   useEffect(() => {
     if (selectedConversationId) {
       joinAppointmentRoom(selectedConversationId);
-      loadMessages(selectedConversationId);
+      const cachedMessages = messagesCacheRef.current[selectedConversationId];
+      if (cachedMessages) {
+        setMessages(cachedMessages);
+      }
+
+      loadMessages(selectedConversationId, { background: Boolean(cachedMessages) });
       markAsRead(selectedConversationId);
     }
 
@@ -103,8 +144,8 @@ export const MessagingPage: React.FC = () => {
     }
 
     const intervalId = window.setInterval(() => {
-      loadMessages(selectedConversationId);
-    }, 8000);
+      loadMessages(selectedConversationId, { background: true });
+    }, 12000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -113,6 +154,11 @@ export const MessagingPage: React.FC = () => {
 
   const handleSelectConversation = (appointmentId: string) => {
     setSelectedConversationId(appointmentId);
+
+    const cachedMessages = messagesCacheRef.current[appointmentId];
+    if (cachedMessages) {
+      setMessages(cachedMessages);
+    }
   };
 
   const handleSendMessage = async (text: string) => {
@@ -126,7 +172,11 @@ export const MessagingPage: React.FC = () => {
       });
       
       // Add message to current thread
-      setMessages(prev => [...prev, message]);
+      setMessages(prev => {
+        const updatedMessages = [...prev, message];
+        messagesCacheRef.current[selectedConversationId] = updatedMessages;
+        return updatedMessages;
+      });
       
       // Note: Conversation list updates are handled by the useMessaging hook
     } catch (error: any) {

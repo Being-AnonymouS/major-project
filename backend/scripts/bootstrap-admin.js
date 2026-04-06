@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 
 const bootstrapLabel = '[bootstrap-admin]';
+const truthyValues = new Set(['1', 'true', 'yes', 'on']);
 
 const loadEnvironment = () => {
   dotenv.config({ path: path.resolve(process.cwd(), '.env') });
@@ -39,12 +40,58 @@ const resolveBcryptRounds = () => {
   return 12;
 };
 
-const resolveBootstrapAdmin = () => {
-  const email = (process.env.BOOTSTRAP_ADMIN_EMAIL || 'admin@mentorconnect.com').trim().toLowerCase();
-  const name = (process.env.BOOTSTRAP_ADMIN_NAME || 'Administrator').trim() || 'Administrator';
-  const password = (process.env.BOOTSTRAP_ADMIN_PASSWORD || 'admin123').trim();
+const shouldIncludeDemoUsers = () => {
+  const raw = (process.env.BOOTSTRAP_INCLUDE_DEMO_USERS || 'true').trim().toLowerCase();
+  return truthyValues.has(raw);
+};
 
-  return { email, name, password };
+const resolveBootstrapUsers = () => {
+  const users = [
+    {
+      label: 'admin',
+      role: 'ADMIN',
+      email: (process.env.BOOTSTRAP_ADMIN_EMAIL || 'admin@mentorconnect.com').trim().toLowerCase(),
+      name: (process.env.BOOTSTRAP_ADMIN_NAME || 'Administrator').trim() || 'Administrator',
+      password: (process.env.BOOTSTRAP_ADMIN_PASSWORD || 'admin123').trim(),
+      usedDefaultPassword: !isNonEmptyString(process.env.BOOTSTRAP_ADMIN_PASSWORD),
+      extraData: {},
+    },
+  ];
+
+  if (!shouldIncludeDemoUsers()) {
+    return users;
+  }
+
+  users.push(
+    {
+      label: 'mentor',
+      role: 'MENTOR',
+      email: (process.env.BOOTSTRAP_MENTOR_EMAIL || 'mentor@mentorconnect.com').trim().toLowerCase(),
+      name: (process.env.BOOTSTRAP_MENTOR_NAME || 'Mentor Demo').trim() || 'Mentor Demo',
+      password: (process.env.BOOTSTRAP_MENTOR_PASSWORD || 'mentor123').trim(),
+      usedDefaultPassword: !isNonEmptyString(process.env.BOOTSTRAP_MENTOR_PASSWORD),
+      extraData: {
+        expertise: 'General Mentorship, Career Guidance',
+        bio: 'Auto-bootstrap mentor account for first-time deployments.',
+        yearsExperience: 5,
+      },
+    },
+    {
+      label: 'mentee',
+      role: 'MENTEE',
+      email: (process.env.BOOTSTRAP_MENTEE_EMAIL || 'mentee@mentorconnect.com').trim().toLowerCase(),
+      name: (process.env.BOOTSTRAP_MENTEE_NAME || 'Mentee Demo').trim() || 'Mentee Demo',
+      password: (process.env.BOOTSTRAP_MENTEE_PASSWORD || 'mentee123').trim(),
+      usedDefaultPassword: !isNonEmptyString(process.env.BOOTSTRAP_MENTEE_PASSWORD),
+      extraData: {
+        institute: 'Mentor Connect Demo',
+        course: 'Onboarding',
+        goals: 'Validate platform login and messaging flows after deployment.',
+      },
+    }
+  );
+
+  return users;
 };
 
 const bootstrapAdmin = async () => {
@@ -59,32 +106,56 @@ const bootstrapAdmin = async () => {
   const prisma = new PrismaClient();
 
   try {
-    const existingUsers = await prisma.user.count();
-    if (existingUsers > 0) {
-      console.log(`${bootstrapLabel} Users already exist (${existingUsers}). Skipping bootstrap.`);
-      return;
+    const bootstrapUsers = resolveBootstrapUsers();
+    const configuredEmails = bootstrapUsers.map((user) => user.email);
+
+    if (configuredEmails.some((email) => !isNonEmptyString(email))) {
+      throw new Error('One or more bootstrap user emails are empty');
     }
 
-    const admin = resolveBootstrapAdmin();
-    if (!admin.password) {
-      throw new Error('BOOTSTRAP_ADMIN_PASSWORD is empty');
+    if (bootstrapUsers.some((user) => !isNonEmptyString(user.password))) {
+      throw new Error('One or more bootstrap user passwords are empty');
     }
 
-    const hashedPassword = await bcrypt.hash(admin.password, resolveBcryptRounds());
-
-    await prisma.user.create({
-      data: {
-        email: admin.email,
-        name: admin.name,
-        password: hashedPassword,
-        role: 'ADMIN',
+    const existingUsers = await prisma.user.findMany({
+      where: {
+        email: {
+          in: configuredEmails,
+        },
+      },
+      select: {
+        email: true,
       },
     });
 
-    console.log(`${bootstrapLabel} Created initial admin user: ${admin.email}`);
+    const existingEmailSet = new Set(existingUsers.map((user) => user.email.toLowerCase()));
+    const missingUsers = bootstrapUsers.filter((user) => !existingEmailSet.has(user.email));
 
-    if (!isNonEmptyString(process.env.BOOTSTRAP_ADMIN_PASSWORD)) {
-      console.warn(`${bootstrapLabel} Default password "admin123" was used. Set BOOTSTRAP_ADMIN_PASSWORD and rotate admin credentials.`);
+    if (missingUsers.length === 0) {
+      console.log(`${bootstrapLabel} Bootstrap users already exist. Nothing to create.`);
+      return;
+    }
+
+    const rounds = resolveBcryptRounds();
+
+    for (const user of missingUsers) {
+      const hashedPassword = await bcrypt.hash(user.password, rounds);
+
+      await prisma.user.create({
+        data: {
+          email: user.email,
+          name: user.name,
+          password: hashedPassword,
+          role: user.role,
+          ...user.extraData,
+        },
+      });
+
+      console.log(`${bootstrapLabel} Created ${user.label} user: ${user.email}`);
+
+      if (user.usedDefaultPassword) {
+        console.warn(`${bootstrapLabel} ${user.label} used default password. Set BOOTSTRAP_${user.label.toUpperCase()}_PASSWORD and rotate credentials.`);
+      }
     }
   } finally {
     await prisma.$disconnect();

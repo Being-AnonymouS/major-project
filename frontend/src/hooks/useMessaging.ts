@@ -6,6 +6,33 @@ import { useAuth } from './useAuth';
 import { ReadStatusManager } from '../utils/readStatusManager';
 import { Conversation, Message } from '../types/message';
 
+interface LoadConversationsOptions {
+  background?: boolean;
+}
+
+const areConversationListsEqual = (current: Conversation[], next: Conversation[]): boolean => {
+  if (current.length !== next.length) {
+    return false;
+  }
+
+  for (let index = 0; index < current.length; index += 1) {
+    const currentItem = current[index];
+    const nextItem = next[index];
+
+    if (
+      currentItem.appointmentId !== nextItem.appointmentId ||
+      currentItem.unreadCount !== nextItem.unreadCount ||
+      currentItem.appointment.status !== nextItem.appointment.status ||
+      currentItem.lastMessage?.id !== nextItem.lastMessage?.id ||
+      currentItem.lastMessage?.timestamp !== nextItem.lastMessage?.timestamp
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export const useMessaging = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,34 +43,44 @@ export const useMessaging = () => {
   const { user } = useAuth();
 
   // Load conversations
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (options?: LoadConversationsOptions) => {
+    const background = options?.background ?? false;
+
     try {
-      setIsLoading(true);
-      setError(null);
+      if (!background) {
+        setIsLoading(true);
+        setError(null);
+      }
       
       // Check if user is authenticated before making API call
       const token = localStorage.getItem('token');
 
       if (!token) {
-        setConversations([]);
+        setConversations((previousConversations) => previousConversations.length > 0 ? [] : previousConversations);
         return;
       }
 
       const data = await messageService.getConversations();
-      setConversations(data);
+      setConversations((previousConversations) =>
+        areConversationListsEqual(previousConversations, data) ? previousConversations : data
+      );
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to load conversations';
       if (import.meta.env.DEV) {
         console.warn('Unable to load conversations:', err);
       }
-      setError(errorMessage);
+      if (!background) {
+        setError(errorMessage);
+      }
       
       // Only show error toast if it's not an authentication error
-      if (!errorMessage.includes('Authentication') && !errorMessage.includes('401')) {
+      if (!background && !errorMessage.includes('Authentication') && !errorMessage.includes('401')) {
         showError(errorMessage);
       }
     } finally {
-      setIsLoading(false);
+      if (!background) {
+        setIsLoading(false);
+      }
     }
   }, [showError]);
 
@@ -81,8 +118,8 @@ export const useMessaging = () => {
     }
 
     const intervalId = window.setInterval(() => {
-      loadConversations();
-    }, 15000);
+      loadConversations({ background: true });
+    }, 25000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -112,7 +149,7 @@ export const useMessaging = () => {
 
   // Force refresh conversations (useful for updating counts)
   const refreshConversations = useCallback(() => {
-    loadConversations();
+    loadConversations({ background: false });
   }, [loadConversations]);
 
   return {

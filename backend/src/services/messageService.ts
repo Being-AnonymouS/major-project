@@ -1,6 +1,13 @@
 import prisma from '../utils/prisma';
 import { MessageWithUsers } from '../types/database';
 
+const chatUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+} as const;
+
 export class MessageService {
   /**
    * Create a new message
@@ -53,40 +60,10 @@ export class MessageService {
         },
         include: {
           from: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-              createdAt: true,
-              updatedAt: true,
-              expertise: true,
-              bio: true,
-              yearsExperience: true,
-              availabilitySlots: true,
-              ratingAverage: true,
-              institute: true,
-              course: true,
-              goals: true,
-            },
+            select: chatUserSelect,
           },
           to: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-              createdAt: true,
-              updatedAt: true,
-              expertise: true,
-              bio: true,
-              yearsExperience: true,
-              availabilitySlots: true,
-              ratingAverage: true,
-              institute: true,
-              course: true,
-              goals: true,
-            },
+            select: chatUserSelect,
           },
         },
       });
@@ -138,40 +115,10 @@ export class MessageService {
         where: { appointmentId },
         include: {
           from: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-              createdAt: true,
-              updatedAt: true,
-              expertise: true,
-              bio: true,
-              yearsExperience: true,
-              availabilitySlots: true,
-              ratingAverage: true,
-              institute: true,
-              course: true,
-              goals: true,
-            },
+            select: chatUserSelect,
           },
           to: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-              createdAt: true,
-              updatedAt: true,
-              expertise: true,
-              bio: true,
-              yearsExperience: true,
-              availabilitySlots: true,
-              ratingAverage: true,
-              institute: true,
-              course: true,
-              goals: true,
-            },
+            select: chatUserSelect,
           },
         },
         orderBy: { timestamp: 'asc' },
@@ -259,40 +206,10 @@ export class MessageService {
           messages: {
             include: {
               from: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  role: true,
-                  createdAt: true,
-                  updatedAt: true,
-                  expertise: true,
-                  bio: true,
-                  yearsExperience: true,
-                  availabilitySlots: true,
-                  ratingAverage: true,
-                  institute: true,
-                  course: true,
-                  goals: true,
-                },
+                select: chatUserSelect,
               },
               to: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  role: true,
-                  createdAt: true,
-                  updatedAt: true,
-                  expertise: true,
-                  bio: true,
-                  yearsExperience: true,
-                  availabilitySlots: true,
-                  ratingAverage: true,
-                  institute: true,
-                  course: true,
-                  goals: true,
-                },
+                select: chatUserSelect,
               },
             },
             orderBy: { timestamp: 'desc' },

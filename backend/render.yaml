@@ -29,6 +29,20 @@ services:
         value: Administrator
       - key: BOOTSTRAP_ADMIN_PASSWORD
         value: admin123
+      - key: BOOTSTRAP_INCLUDE_DEMO_USERS
+        value: true
+      - key: BOOTSTRAP_MENTOR_EMAIL
+        value: mentor@mentorconnect.com
+      - key: BOOTSTRAP_MENTOR_NAME
+        value: Mentor Demo
+      - key: BOOTSTRAP_MENTOR_PASSWORD
+        value: mentor123
+      - key: BOOTSTRAP_MENTEE_EMAIL
+        value: mentee@mentorconnect.com
+      - key: BOOTSTRAP_MENTEE_NAME
+        value: Mentee Demo
+      - key: BOOTSTRAP_MENTEE_PASSWORD
+        value: mentee123
     healthCheckPath: /api/health
 
 databases:
