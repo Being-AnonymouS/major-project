@@ -2,7 +2,7 @@ services:
   - type: web
     name: mentor-connect-backend-piyushcoder07-20260406
     env: node
-    region: oregon
+    region: singapore
     plan: free
     rootDir: backend
     buildCommand: npm install && npx prisma generate && npm run build
@@ -30,4 +30,4 @@ databases:
   - name: mentor-connect-db-piyushcoder07-20260406
     databaseName: mentor_connect
     plan: free
-    region: oregon
+    region: singapore
